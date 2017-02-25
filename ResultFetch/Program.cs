@@ -9,10 +9,18 @@ using org.jsoup;
 using org.jsoup.nodes;
 using org.jsoup.select;
 
-/// <summary>
-/// Root Namespace for SJCE Result Fetch Application
-/// </summary>
+
 namespace ResultFetch {
+	/// <summary>
+	/// Root Namespace for SJCE Result Fetch Application
+	/// </summary>
+
+	[System.Runtime.CompilerServices.CompilerGenerated]
+	class NamespaceDoc {
+		//Trick to Sandcastle Help File Builder
+		//For including namespace Documentation
+	}
+
 	/// <summary>
 	/// Thrown when errors happen related to Student Class
 	/// </summary>
@@ -67,6 +75,22 @@ namespace ResultFetch {
 		/// <returns> A Student Object containg the Details </returns>
 		/// <exception cref="StudentException">If USN is incorrect</exception>
 		/// <exception cref="HttpRequestException">If an Connectictivity Error is occured</exception>
+		/// <example><code>				
+		///		var result = Student.FetchResult("4jC15CS000");
+		///		try {
+		///			result.Wait();
+		///			Console.WriteLine(result.Result);
+		///		}
+		///		catch (Exception e) {
+		///			if (e.InnerException is HttpRequestException)
+		///				Console.WriteLine(e.InnerException.Message + " Net sari mada manga!");
+		///			else if (e.InnerException is StudentException)
+		///				Console.WriteLine(e.InnerException.Message + " Nee JC Student Pakka na??");
+		///			else
+		///				Console.WriteLine("Fatal Error" + e);
+		///			Thread.CurrentThread.Abort(-1);
+		///		}
+		///	</code></example>
 		public static async Task<Student> FetchResult(string usn) {
 			using (var client = new HttpClient()) {
 				var values = new Dictionary<string, string> {
