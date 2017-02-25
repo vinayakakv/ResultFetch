@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Net;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.Threading;
@@ -8,26 +9,34 @@ using org.jsoup;
 using org.jsoup.nodes;
 using org.jsoup.select;
 
+/// <summary>
+/// Root Namespace for SJCE Result Fetch Application
+/// </summary>
 namespace ResultFetch {
-
+	/// <summary>
+	/// Thrown when errors happen related to Student Class
+	/// </summary>
 	public class StudentException : Exception {
 		public StudentException() : base("Bad Student Data") { }
 		public StudentException(string message) : base(message) { }
 		public StudentException(string message, Exception inner) : base(message, inner) { }
 	}
-
-	class Student {
+	/// <summary>
+	/// A Class for Dealing with Result Fetch tasks
+	/// </summary>
+	public class Student {
 		private string name;
 		private string usn;
 		private Dictionary<string, string> grades;
 		/// <summary>
-		/// Creates a Student Object
+		/// Initializes a new instance of Student class with USN
 		/// </summary>
 		/// <param name="usn">The USN of the Student</param>
 		/// <exception cref="StudentException">If the USN is invalid</exception>
 		public Student(string usn) {
-			if (usn.Trim().Length != 10 || usn.Trim().Substring(0, 3) != "4JC")
-				throw new StudentException($"Invalid USN Number {usn.Trim()} ");
+			usn = usn.ToUpper().Trim();
+			if (usn.Length != 10 || usn.Substring(0, 3) != "4JC")
+				throw new StudentException($"Invalid USN Number {usn} ");
 			this.usn = usn.Trim();
 			this.grades = new Dictionary<string, string>();
 		}
@@ -68,7 +77,12 @@ namespace ResultFetch {
 					Student s = new Student(usn);
 					var content = new FormUrlEncodedContent(values);
 					var response = await client.PostAsync("http://sjce.ac.in/view-results", content);
+					if (response.StatusCode != HttpStatusCode.OK)
+						throw new HttpRequestException("Website unable to Handle Request...Might be busy");
 					var responseString = await response.Content.ReadAsStringAsync();
+					//Jsoup.jar was used
+					//Coverted using IVMC ! :)
+					//Inlcude IKVM.OpenJDK.Core.dll as Reference
 					Document doc = Jsoup.parse(responseString);
 					Elements nameAndUsn = doc.getElementsByTag("center");
 					string name = nameAndUsn.select("h1").first().text().Substring(7);
@@ -83,10 +97,10 @@ namespace ResultFetch {
 					return s;
 				}
 				catch (Exception e) {
-					if (e is ArgumentNullException)
+					if (e is NullReferenceException)
 						throw new StudentException("Might be a bad USN", e);
 					else if (e is HttpRequestException)
-						throw new HttpRequestException("Net sati illa marre", e);
+						throw new HttpRequestException("Net sari illa marre", e);
 					else
 						throw;
 				}
@@ -96,16 +110,18 @@ namespace ResultFetch {
 	class Program {
 		static void Main(string[] args) {
 			Thread t = new Thread(() => {
-				var result = Student.FetchResult("4JC15CS129");
+				var result = Student.FetchResult("4jC15CS000");
 				try {
 					result.Wait();
-					Console.WriteLine(result.Result?.ToString());
+					Console.WriteLine(result.Result);
 				}
 				catch (Exception e) {
 					if (e.InnerException is HttpRequestException)
-						Console.WriteLine("Net sari illa marre");
-					if (e.InnerException is StudentException)
-						Console.WriteLine(e.InnerException.Message);
+						Console.WriteLine(e.InnerException.Message + " Net sari mada manga!");
+					else if (e.InnerException is StudentException)
+						Console.WriteLine(e.InnerException.Message + " Nee JC Student Pakka na??");
+					else
+						Console.WriteLine("Fatal Error" + e);
 					Thread.CurrentThread.Abort(-1);
 				}
 			});
