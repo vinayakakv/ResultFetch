@@ -20,15 +20,29 @@ namespace ResultFetch {
 		private string name;
 		private string usn;
 		private Dictionary<string, string> grades;
+		/// <summary>
+		/// Creates a Student Object
+		/// </summary>
+		/// <param name="usn">The USN of the Student</param>
+		/// <exception cref="StudentException">If the USN is invalid</exception>
 		public Student(string usn) {
 			if (usn.Trim().Length != 10 || usn.Trim().Substring(0, 3) != "4JC")
 				throw new StudentException($"Invalid USN Number {usn.Trim()} ");
 			this.usn = usn.Trim();
 			this.grades = new Dictionary<string, string>();
 		}
+		/// <summary>
+		/// Adds the Subject to Current Student
+		/// </summary>
+		/// <param name="subcode">Subject Code</param>
+		/// <param name="grade">The Letter Grade obtained by the Student</param>
 		public void AddSubject(string subcode, string grade) {
 			grades.Add(subcode, grade);
 		}
+		/// <summary>
+		/// Obtain a String representation of Student
+		/// </summary>
+		/// <returns> String representing the Name,USN and Marks of Current Student</returns>
 		public override string ToString() {
 			StringBuilder sb = new StringBuilder();
 			sb.AppendLine(name);
@@ -37,15 +51,21 @@ namespace ResultFetch {
 				sb.AppendLine($"{kvp.Key} : {kvp.Value}");
 			return sb.ToString();
 		}
+		/// <summary>
+		/// Fetches the Result from SJCE website
+		/// </summary>
+		/// <param name="usn">USN of the Student</param>
+		/// <returns> A Student Object containg the Details </returns>
+		/// <exception cref="StudentException">If USN is incorrect</exception>
+		/// <exception cref="HttpRequestException">If an Connectictivity Error is occured</exception>
 		public static async Task<Student> FetchResult(string usn) {
 			using (var client = new HttpClient()) {
 				var values = new Dictionary<string, string> {
 					["USN"] = usn,
 					["submit_result"] = "Fetch Result"
 				};
-				Student s = null;
 				try {
-					s = new Student(usn);
+					Student s = new Student(usn);
 					var content = new FormUrlEncodedContent(values);
 					var response = await client.PostAsync("http://sjce.ac.in/view-results", content);
 					var responseString = await response.Content.ReadAsStringAsync();
@@ -60,16 +80,16 @@ namespace ResultFetch {
 						if (!string.IsNullOrEmpty(value))
 							s.AddSubject(value.Split()[0], value.Substring(value.LastIndexOf(" ")));
 					}
+					return s;
 				}
 				catch (Exception e) {
 					if (e is ArgumentNullException)
 						throw new StudentException("Might be a bad USN", e);
 					else if (e is HttpRequestException)
-						throw new StudentException("Net sati illa marre", e);
+						throw new HttpRequestException("Net sati illa marre", e);
 					else
 						throw;
 				}
-				return s;
 			}
 		}
 	}
