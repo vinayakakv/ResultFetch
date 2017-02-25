@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -10,13 +9,21 @@ using org.jsoup.nodes;
 using org.jsoup.select;
 
 namespace ResultFetch {
+
+	public class StudentException : Exception {
+		public StudentException() : base("Bad Student Data") { }
+		public StudentException(string message) : base(message) { }
+		public StudentException(string message, Exception inner) : base(message, inner) { }
+	}
+
 	class Student {
 		private string name;
 		private string usn;
 		private Dictionary<string, string> grades;
-		public Student(string name, string usn) {
-			this.name = name;
-			this.usn = usn;
+		public Student(string usn) {
+			if (usn.Trim().Length != 10 || usn.Trim().Substring(0, 3) != "4JC")
+				throw new StudentException($"Invalid USN Number {usn.Trim()} ");
+			this.usn = usn.Trim();
 			this.grades = new Dictionary<string, string>();
 		}
 		public void AddSubject(string subcode, string grade) {
@@ -36,19 +43,31 @@ namespace ResultFetch {
 					["USN"] = usn,
 					["submit_result"] = "Fetch Result"
 				};
-				var content = new FormUrlEncodedContent(values);
-				var response = await client.PostAsync("http://sjce.ac.in/view-results", content);
-				var responseString = await response.Content.ReadAsStringAsync();
-				Document doc = Jsoup.parse(responseString);
-				Elements nameAndUsn = doc.getElementsByTag("center");
-				string name = nameAndUsn.select("h1").first().text().Substring(7);
-				Element marks = doc.getElementsByTag("table").first();
-				Student s = new Student(name, usn);
-				foreach (Element row in marks.select("tr")) {
-					Elements td = row.select("td");
-					string value = td.text();
-					if (!string.IsNullOrEmpty(value))
-						s.AddSubject(value.Split()[0], value.Substring(value.LastIndexOf(" ")));
+				Student s = null;
+				try {
+					s = new Student(usn);
+					var content = new FormUrlEncodedContent(values);
+					var response = await client.PostAsync("http://sjce.ac.in/view-results", content);
+					var responseString = await response.Content.ReadAsStringAsync();
+					Document doc = Jsoup.parse(responseString);
+					Elements nameAndUsn = doc.getElementsByTag("center");
+					string name = nameAndUsn.select("h1").first().text().Substring(7);
+					s.name = name;
+					Element marks = doc.getElementsByTag("table").first();
+					foreach (Element row in marks.select("tr")) {
+						Elements td = row.select("td");
+						string value = td.text();
+						if (!string.IsNullOrEmpty(value))
+							s.AddSubject(value.Split()[0], value.Substring(value.LastIndexOf(" ")));
+					}
+				}
+				catch (Exception e) {
+					if (e is ArgumentNullException)
+						throw new StudentException("Might be a bad USN", e);
+					else if (e is HttpRequestException)
+						throw new StudentException("Net sati illa marre", e);
+					else
+						throw;
 				}
 				return s;
 			}
@@ -56,15 +75,23 @@ namespace ResultFetch {
 	}
 	class Program {
 		static void Main(string[] args) {
-			Thread t = new Thread(() => Console.WriteLine(Student.FetchResult("4JC15CS131").Result));
+			Thread t = new Thread(() => {
+				var result = Student.FetchResult("4JC15CS129");
+				try {
+					result.Wait();
+					Console.WriteLine(result.Result?.ToString());
+				}
+				catch (Exception e) {
+					if (e.InnerException is HttpRequestException)
+						Console.WriteLine("Net sari illa marre");
+					if (e.InnerException is StudentException)
+						Console.WriteLine(e.InnerException.Message);
+					Thread.CurrentThread.Abort(-1);
+				}
+			});
 			t.Start();
-			Console.WriteLine("Wait ....");
+			Console.WriteLine("Please wait while the result is being fetched");
 			t.Join();
-			Console.CancelKeyPress += (a, b) => {
-				Console.WriteLine("Exiting");
-				Thread.Sleep(1000);
-				Environment.Exit(0);
-			};
 			Console.ReadKey();
 		}
 	}
