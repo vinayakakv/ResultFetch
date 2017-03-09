@@ -9,7 +9,6 @@ using org.jsoup;
 using org.jsoup.nodes;
 using org.jsoup.select;
 
-
 namespace ResultFetch {
 	/// <summary>
 	/// Root Namespace for SJCE Result Fetch Application
@@ -75,7 +74,7 @@ namespace ResultFetch {
 		/// <returns> A Student Object containg the Details </returns>
 		/// <exception cref="StudentException">If USN is incorrect</exception>
 		/// <exception cref="HttpRequestException">If an Connectictivity Error is occured</exception>
-		/// <example><code>				
+		/// <example><code lang="cs">				
 		///		var result = Student.FetchResult("4jC15CS000");
 		///		try {
 		///			result.Wait();
@@ -133,8 +132,9 @@ namespace ResultFetch {
 	}
 	class Program {
 		static void Main(string[] args) {
+            //VS2017!
 			Thread t = new Thread(() => {
-				var result = Student.FetchResult("4jC15CS000");
+				Task<Student> result = Student.FetchResult("4jC15CS000");
 				try {
 					result.Wait();
 					Console.WriteLine(result.Result);
