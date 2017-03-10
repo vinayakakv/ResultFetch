@@ -53,7 +53,7 @@ namespace ResultFetch {
 		/// <param name="subcode">Subject Code</param>
 		/// <param name="grade">The Letter Grade obtained by the Student</param>
 		public void AddSubject(string subcode, string grade) {
-			grades.Add(subcode, grade);
+			grades.Add(subcode.Trim(), grade.Trim());
 		}
 		/// <summary>
 		/// Obtain a String representation of Student
@@ -65,6 +65,7 @@ namespace ResultFetch {
 			sb.AppendLine(usn);
 			foreach (var kvp in grades)
 				sb.AppendLine($"{kvp.Key} : {kvp.Value}");
+			sb.AppendLine($"SGPA : {GetSgpa()}");
 			return sb.ToString();
 		}
 		/// <summary>
@@ -129,12 +130,30 @@ namespace ResultFetch {
 				}
 			}
 		}
+		/// <summary>
+		/// Calculates the SGPA of Current Student
+		/// </summary>
+		/// <returns>SGPAE</returns>
+        public double GetSgpa() {
+            double totalCredits = 0;
+            double earnedCredits = 0;
+            foreach(var grade in grades) {
+				int gp = "SABCDE".IndexOf(grade.Value.Trim());
+				gp = gp == -1 ? 0 : 10 - gp;
+				int cr = grade.Key.Contains("L") ? 2 : grade.Key.Contains("CS") ? 4 : 0;
+				totalCredits += cr;
+				earnedCredits += cr * gp;
+            }
+            return earnedCredits / totalCredits;
+        }
 	}
 	class Program {
 		static void Main(string[] args) {
-            //VS2017!
+			//VS2017!
+			Console.WriteLine("Enter USN ");
+			string usn = Console.ReadLine().Trim().ToUpper();
 			Thread t = new Thread(() => {
-				Task<Student> result = Student.FetchResult("4jC15CS000");
+				Task<Student> result = Student.FetchResult(usn);
 				try {
 					result.Wait();
 					Console.WriteLine(result.Result);
